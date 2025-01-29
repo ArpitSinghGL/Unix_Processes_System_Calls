@@ -75,20 +75,26 @@ int main()
 
     // IP address of Google's server: 142.251.163.100
 
-    char* ip = "142.251.163.100";   // IP address of the server in string format
-    // This IP address needs to be converted
+    char* ip = "127.0.0.1";   // IP address of the server in string format
+    // This IP address needs to be converted to a network address structure in the af address family
 
     struct sockaddr_in address;
 
     address.sin_family = AF_INET;  // Address family for IPv4
 
-    address.sin_port = htons(80);  // Port on which the server is listening
+    // Port on which the server is listening
+    // address.sin_port = htons(80);  
+    // Note: PORT number 80 is reserved for HTTP requests. This port number should be used 
+    // when connecting to the google's server for example.
 
-    // Note: PORT number 80 is reserved for HTTP requests.
+    // Attaching the port number on which the local server is running i.e. 2000
+    address.sin_port = htons(2000);
+
 
     // address.sin_addr.s_addr;  // Server's IP address in uint_32 format
 
     // inet_pton - convert IPv4 and IPv6 addresses from text to binary form
+    // pton stands for presentation to network
 
     // #include <arpa/inet.h>
 
@@ -110,35 +116,64 @@ int main()
 
     if(connectionFeedback == -1)
     {
-        printf("Could not connect to server\n");
+        printf("Could not connect to server !\n");
         return 2;
     }
 
     if(connectionFeedback == 0)
     {
-        printf("Connection to server successful\n");
+        printf("Connection to server successful !\n");
     }
 
     // ------------------- CONNECTION TO SERVER ESTABLISHED -----------------------------
 
 
+    // ------------------- COMMUNICATING WITH GOOGLE's SERVER ----------------------------
+
+
     // Sending an HTTP request to the Google's server
 
-    char* httpRequest = "GET \\ HTTP/1.1\r\nHOST:google.com\r\n\r\n";
+    // char* httpRequest = "GET \\ HTTP/1.1\r\nHOST:google.com\r\n\r\n";
 
-    send(socketFd , httpRequest , strlen(httpRequest) , 0);
+    // send(socketFd , httpRequest , strlen(httpRequest) , 0);
 
     // Receiving response from the Google's server
 
-    char httpResponse[1024];
+    // char httpResponse[1024];
 
-    recv(socketFd , httpResponse , sizeof(httpResponse) , 0);
+    // recv(socketFd , httpResponse , sizeof(httpResponse) , 0);
 
     // Displaying the Response received from Google's server
 
-    printf("Response received from Google's server: \n");
+    // printf("Response received from Google's server: \n");
 
-    printf("%s\n" , httpResponse);
+    // printf("%s\n" , httpResponse);
+
+    // ------------------- COMMUNICATING WITH GOOGLE's SERVER --------------------------------
+
+
+
+    // -------------- COMMUNICATING WITH THE LOCAL SERVER RUNNING ON PORT 2000 --------------
+
+    // Sending a message to the local server running on port 2000
+
+    char* message = "Hey, Sever !";
+
+    send(socketFd , message , strlen(message) , 0);
+
+    // Recieving a response from the Local Server running on port 2000
+
+    char responseFromLocalServer[1024];
+
+    recv(socketFd , responseFromLocalServer , sizeof(responseFromLocalServer) , 0);
+
+    // Displaying the response recieved from the local server
+
+    printf("Response received from the Local Server: \n");
+
+    printf("%s\n" , responseFromLocalServer);
+
+    // ---------- COMMUNICATING WITH THE LOCAL SERVER RUNNING ON PORT 2000 ------------------
 
     return 0;
 }
