@@ -10,6 +10,8 @@
 
 #include <string.h>
 
+#include <stdbool.h>
+
 int main()
 {
     // socket()  creates  an  endpoint  for communication and returns a file descriptor that 
@@ -42,6 +44,8 @@ int main()
         printf("Failed to create Socket\n");
         return 1;
     }
+
+    printf("Client Socket File Descriptor: %d\n" , socketFd);
 
     // ----------------------------------------------------------------------------------
 
@@ -122,7 +126,7 @@ int main()
 
     if(connectionFeedback == 0)
     {
-        printf("Connection to server successful !\n");
+        printf("Connection to server successful !\n\n");
     }
 
     // ------------------- CONNECTION TO SERVER ESTABLISHED -----------------------------
@@ -157,21 +161,40 @@ int main()
 
     // Sending a message to the local server running on port 2000
 
-    char* message = "Hey, Sever !";
+    char message[1024];
 
-    send(socketFd , message , strlen(message) , 0);
+    while(true)
+    {
+        printf("Enter the message to send to server: \n");
+        fgets(message , sizeof(message) , stdin);
+
+        // Removing the newline character '\n' from fgets
+        message[strcspn(message , "\n")] = '\0';
+
+        if(strcmp(message , "exit") == 0)
+        {
+            break;
+        }
+
+        printf("Message to be send to the server: %s\n" , message);
+        printf("Length of message to be send to the server: %zu\n\n" , strlen(message));
+
+        send(socketFd , message , strlen(message) , 0);
+    }
+
+    close(socketFd);
 
     // Recieving a response from the Local Server running on port 2000
 
-    char responseFromLocalServer[1024];
+    // char responseFromLocalServer[1024];
 
-    recv(socketFd , responseFromLocalServer , sizeof(responseFromLocalServer) , 0);
+    // recv(socketFd , responseFromLocalServer , sizeof(responseFromLocalServer) , 0);
 
     // Displaying the response recieved from the local server
 
-    printf("Response received from the Local Server: \n");
+    // printf("Response received from the Local Server: \n");
 
-    printf("%s\n" , responseFromLocalServer);
+    // printf("%s\n" , responseFromLocalServer);
 
     // ---------- COMMUNICATING WITH THE LOCAL SERVER RUNNING ON PORT 2000 ------------------
 

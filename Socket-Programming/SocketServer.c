@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 int main()
 {
@@ -94,19 +95,47 @@ int main()
 
     printf("Server connected to client successfully\n");
 
-    printf("New Client Socket File Descriptor: %d\n" , new_client_socket_fd);
+    printf("New Client Socket File Descriptor: %d\n\n" , new_client_socket_fd);
 
     // Recieving message from Client
 
     char messageFromClient[1024];
 
-    recv(new_client_socket_fd , messageFromClient , sizeof(messageFromClient) , 0);
+    while(true)
+    {
+        int numOfBytesRead = recv(new_client_socket_fd , messageFromClient , sizeof(messageFromClient) , 0);
 
-    // Displaying the message recieved from client
+        printf("Number of Bytes read: %d\n" , numOfBytesRead);
 
-    printf("Message recieved from Client: \n");
+        if(numOfBytesRead == 0)
+        {
+            printf("Client Disconnected !\n\n");
+            break;
+        }
+        else if(numOfBytesRead < 0)
+        {
+            printf("Error recieving data from client !\n\n");
+            break;
+        }
 
-    printf("%s\n" , messageFromClient);
+        messageFromClient[numOfBytesRead] = '\0';
+
+        // Displaying the message recieved from client
+        printf("Message recieved from Client: \n");
+        printf("%s\n\n" , messageFromClient);
+    }
+
+    close(new_client_socket_fd);
+
+    int shutdown_status = shutdown(serverSocketFd , SHUT_RDWR);
+
+    if(shutdown_status == -1)
+    {
+        printf("Server Socket failed to shutdown !\n");
+        return 5;
+    }
+
+    printf("Server Socket shutdown successfully !\n");
 
     return 0;
 }
