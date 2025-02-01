@@ -6,6 +6,114 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <pthread.h>
+
+struct ClientSocket
+{
+    int client_socket_fd;
+    struct sockaddr_in clientAddress;
+    socklen_t clientAddressSize;
+    bool createdSuccessfully;
+};
+
+struct ClientSocket* listOfConnectedClientSockets[10];
+
+int connectedClientSocketsCount = 0;
+
+void sendReceivedMessageToOtherClients(char messageFromClient[] , int new_client_socket_fd)
+{
+    // printf("Message to be send to other clients: \n");
+    // printf("%s\n\n" , messageFromClient);
+    send(new_client_socket_fd , messageFromClient , strlen(messageFromClient) , 0);
+}
+
+void receiveMessagesFromClient(int new_client_socket_fd)
+{
+    char messageFromClient[1024];
+
+    while(true)
+    {
+        // recv() is a blocking call
+        int numOfBytesRead = recv(new_client_socket_fd , messageFromClient , sizeof(messageFromClient) , 0);
+
+        printf("Number of Bytes read with client socket fd: %d = %d bytes\n" , new_client_socket_fd , numOfBytesRead);
+
+        if(numOfBytesRead == 0)
+        {
+            printf("Client with client_socket_fd: %d Disconnected !\n\n" , new_client_socket_fd);
+            break;
+        }
+        else if(numOfBytesRead < 0)
+        {
+            printf("Error recieving data from client !\n\n");
+            break;
+        }
+
+        messageFromClient[numOfBytesRead] = '\0';
+
+        // Displaying the message recieved from client
+        printf("Message recieved from Client with client socket fd: %d\n" , new_client_socket_fd);
+        printf("%s\n\n" , messageFromClient);
+
+        for(int i = 0 ; i < connectedClientSocketsCount ; i++)
+        {
+            if(listOfConnectedClientSockets[i] -> client_socket_fd != new_client_socket_fd)
+            {
+                sendReceivedMessageToOtherClients(messageFromClient , listOfConnectedClientSockets[i] -> client_socket_fd);
+            }
+        }
+    }
+
+    close(new_client_socket_fd);
+
+    return;
+}
+
+void startReceivingMessagesOnSeparateThread(int new_client_socket_fd)
+{
+    pthread_t tid;
+
+    pthread_create(&tid , NULL , receiveMessagesFromClient , new_client_socket_fd);
+}
+
+struct ClientSocket* createClientSocketForIncomingConnection(int serverSocketFd)
+{
+    struct ClientSocket* clientSocket = malloc( sizeof(struct ClientSocket) );
+
+    clientSocket -> clientAddressSize = sizeof(struct sockaddr_in);
+
+    clientSocket -> client_socket_fd = accept(serverSocketFd , (struct sockaddr*)(&clientSocket -> clientAddress) , &(clientSocket -> clientAddressSize) );
+
+    if(clientSocket -> client_socket_fd == -1)
+    {
+        printf("Failed to connect to client !\n");
+        clientSocket -> createdSuccessfully = false;
+        free(clientSocket);
+        return NULL;
+    }
+
+    clientSocket -> createdSuccessfully = true;
+
+    printf("Server connected to client successfully\n");
+
+    printf("New Client Socket File Descriptor: %d\n\n" , clientSocket -> client_socket_fd);
+
+    return clientSocket;
+
+}
+
+void startAcceptingIncomingConnections(int serverSocketFd)
+{
+    while(true)
+    {
+        struct ClientSocket* new_client_socket = createClientSocketForIncomingConnection(serverSocketFd);
+        if(new_client_socket -> createdSuccessfully == true)
+        {
+            listOfConnectedClientSockets[connectedClientSocketsCount++] = new_client_socket;
+            startReceivingMessagesOnSeparateThread(new_client_socket -> client_socket_fd);
+        }
+    }
+}
 
 int main()
 {
@@ -61,7 +169,7 @@ int main()
 
     if(listenFeedback == 0)
     {
-        printf("Listening to incoming connections....\n");
+        printf("Listening to incoming connections....\n\n");
     }
 
     // accept(): extracts the first connection request on the queue of pending connections 
@@ -81,58 +189,14 @@ int main()
     // *ADDR_LEN to the address's actual length, and return the new socket's descriptor, 
     // or -1 for errors.
 
-    struct sockaddr_in clientAddress;
-
-    socklen_t clientAddressSize = sizeof(struct sockaddr_in);
-
-    int new_client_socket_fd = accept(serverSocketFd , (struct sockaddr*)&clientAddress , &clientAddressSize);
-
-    if(new_client_socket_fd == -1)
-    {
-        printf("Failed to connect to client !\n");
-        return 4;
-    }
-
-    printf("Server connected to client successfully\n");
-
-    printf("New Client Socket File Descriptor: %d\n\n" , new_client_socket_fd);
-
-    // Recieving message from Client
-
-    char messageFromClient[1024];
-
-    while(true)
-    {
-        int numOfBytesRead = recv(new_client_socket_fd , messageFromClient , sizeof(messageFromClient) , 0);
-
-        printf("Number of Bytes read: %d\n" , numOfBytesRead);
-
-        if(numOfBytesRead == 0)
-        {
-            printf("Client Disconnected !\n\n");
-            break;
-        }
-        else if(numOfBytesRead < 0)
-        {
-            printf("Error recieving data from client !\n\n");
-            break;
-        }
-
-        messageFromClient[numOfBytesRead] = '\0';
-
-        // Displaying the message recieved from client
-        printf("Message recieved from Client: \n");
-        printf("%s\n\n" , messageFromClient);
-    }
-
-    close(new_client_socket_fd);
+    startAcceptingIncomingConnections(serverSocketFd);
 
     int shutdown_status = shutdown(serverSocketFd , SHUT_RDWR);
 
     if(shutdown_status == -1)
     {
         printf("Server Socket failed to shutdown !\n");
-        return 5;
+        return 4;
     }
 
     printf("Server Socket shutdown successfully !\n");

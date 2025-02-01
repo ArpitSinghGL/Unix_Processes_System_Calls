@@ -12,6 +12,70 @@
 
 #include <stdbool.h>
 
+#include <pthread.h>
+
+void receiveMessagesFromServer(int socketFd)
+{
+    char messageReceivedFromServer[1024];
+
+    while(true)
+    {
+        int numOfBytesRead = recv(socketFd , messageReceivedFromServer , sizeof(messageReceivedFromServer) , 0);
+
+        if(numOfBytesRead > 0)
+        {
+            messageReceivedFromServer[numOfBytesRead] = '\0';
+            // printf("Message received from server: \n");
+            printf("%s\n" , messageReceivedFromServer);
+        }
+        else if(numOfBytesRead == 0)
+        {
+            printf("Disconnected from server !\n");
+            break;
+        }
+        else
+        {
+            printf("Error receiving messages from server !\n");
+            break;
+        }
+    }
+
+    return;
+}
+
+void startReceivingMessagesFromTheServer(int socketFd)
+{
+    pthread_t tid;
+    pthread_create(&tid , NULL , receiveMessagesFromServer , socketFd);
+}
+
+void sendMessagesToTheServer(int socketFd)
+{
+    char message[1024];
+
+    while(true)
+    {
+        // printf("Enter the message to send to server: \n");
+        fgets(message , sizeof(message) , stdin);
+
+        // Removing the newline character '\n' from fgets
+        message[strcspn(message , "\n")] = '\0';
+
+        if(strcmp(message , "exit") == 0)
+        {
+            break;
+        }
+
+        // printf("Message to be send to the server: \n");
+        // printf("%s\n" , message);
+        // printf("Length of message to be send to the server: %zu\n\n" , strlen(message));
+
+        send(socketFd , message , strlen(message) , 0);
+    }
+
+    return;
+}
+
 int main()
 {
     // socket()  creates  an  endpoint  for communication and returns a file descriptor that 
@@ -159,28 +223,11 @@ int main()
 
     // -------------- COMMUNICATING WITH THE LOCAL SERVER RUNNING ON PORT 2000 --------------
 
+    // Receiving messages from the server
+    startReceivingMessagesFromTheServer(socketFd);
+
     // Sending a message to the local server running on port 2000
-
-    char message[1024];
-
-    while(true)
-    {
-        printf("Enter the message to send to server: \n");
-        fgets(message , sizeof(message) , stdin);
-
-        // Removing the newline character '\n' from fgets
-        message[strcspn(message , "\n")] = '\0';
-
-        if(strcmp(message , "exit") == 0)
-        {
-            break;
-        }
-
-        printf("Message to be send to the server: %s\n" , message);
-        printf("Length of message to be send to the server: %zu\n\n" , strlen(message));
-
-        send(socketFd , message , strlen(message) , 0);
-    }
+    sendMessagesToTheServer(socketFd);
 
     close(socketFd);
 
